@@ -53,6 +53,15 @@ class DroneStore(object):
             drone.id = self._last_id
             self._drones[drone.id] = drone
 
+    def addDrones(self, name, classtype, rescue=0):
+        cursor = self._conn.cursor()
+        query = ''
+        print('addD')
+        print(name)
+        print(classtype)
+        print(rescue)
+        # query = 'INSERT INTO drones (Did, Oid, Mid, name, class_type, rescue) VALUES '
+
     def remove(self, drone):
         """ Removes a drone from the store. """
         if not drone.id in self._drones:
@@ -72,6 +81,62 @@ class DroneStore(object):
         for drone in self._drones:
             yield drone
 
+    def listDrones(self, args):
+        cursor = self._conn.cursor()
+        query = ''
+        if len(args[0]) != 0:
+            argQuery = 'WHERE '
+            try:
+                if args[0][1] == 'r':
+                    argQuery += 'rescue = true'
+                elif args[0][1] == 'c':
+                    num = args[0].split('=')
+                    if num[1] == '1':
+                        argQuery += 'class_type = 1'
+                    elif num[1] == '2':
+                        argQuery += 'class_type = 2'
+                    else:
+                        e = "Unknown drone class " + str(num[1])
+                        raise Exception(e)
+                if len(args) == 2:
+                    if args[1][1] == 'r':
+                        argQuery += ' AND rescue = true'
+                    elif args[1][1] == 'c':
+                        num = args[1].split('=')
+                        if num[1] == '1':
+                            argQuery += ' AND class_type = 1'
+                        elif num[1] == '2':
+                            argQuery += ' AND class_type = 2'
+                        else:
+                            e = "Unknown drone class " + str(num[1])
+                            raise Exception(e)
+                query = 'SELECT Did, name, class_type, rescue, first_name FROM Drones LEFT JOIN Operators on Drones.Oid = Operators.Oid ' + \
+                    argQuery + ' ORDER BY Did'
+            except Exception as error:
+                raise Exception(error)
+
+        else:
+            query = 'SELECT Did, name, class_type, rescue, first_name FROM Drones LEFT JOIN Operators on Drones.Oid = Operators.Oid ORDER BY Did'
+
+        cursor.execute(query)
+        for (did, name, class_type, rescue, operator) in cursor:
+            drone = Drone(name, class_type, rescue)
+            drone.id = did
+            drone.operator = operator
+
+            if drone.class_type == 1:
+                drone.class_type = 'One'
+            else:
+                drone.class_type = 'Two'
+            if drone.rescue == True:
+                drone.rescue = 'Yes'
+            else:
+                drone.rescue = 'No'
+            if drone.operator == None:
+                drone.operator = '<none>'
+            yield drone
+        cursor.close()
+
     def allocate(self, drone, operator):
         """ Starts the allocation of a drone to an operator. """
         action = DroneAction(drone, operator, self._allocate)
@@ -80,10 +145,11 @@ class DroneStore(object):
                 action.add_message("Operator does not have rescue endorsement")
         if drone.class_type == 2:
             if operator.drone_license != 2:
-                action.add_message("Operator does not have correct drone license")
+                action.add_message(
+                    "Operator does not have correct drone license")
         if operator.drone != None:
             action.add_message("Operator can only control one drone")
-            
+
         return action
 
     def _allocate(self, drone, operator):

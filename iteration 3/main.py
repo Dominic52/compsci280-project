@@ -45,6 +45,8 @@ class Application(object):
 
     def add(self, args):
         """ Adds a new drone. """
+        self._drones.addDrones(args)
+
         raise Exception("Add method has not been implemented yet")
 
     def allocate(self, args):
@@ -62,7 +64,18 @@ class Application(object):
 
     def list(self, args):
         """ Lists all the drones in the system. """
-        raise Exception("List method has not been implemented yet")
+        try:
+            print 'ID\tName\t\t\tClass\tRescue\tOperator'
+            for drone in self._drones.listDrones(args):
+                print '%.4d\t%s\t\t%s\t%s\t%s' % (
+                    drone.id, drone.name, drone.class_type, drone.rescue, drone.operator)
+            if len(list(self._drones.listDrones(args))) != 0:
+                print '%d drones listed' % len(
+                    list(self._drones.listDrones(args)))
+            else:
+                raise Exception("There are no drones for this criteria")
+        except Exception as error:
+            raise Exception(error)
 
     def remove(self, args):
         """ Removes a drone. """
@@ -74,10 +87,22 @@ class Application(object):
 
 
 if __name__ == '__main__':
-    conn = mysql.connector.connect(user='user',
-                                   password='password',
-                                   host='server',
-                                   database='database')
+    # try:
+    #     print("Connecting to UOA database...")
+    #     conn = mysql.connector.connect(user='dyan263',
+    #                                 password='dy002200',
+    #                                 host='studdb-mysql.fos.auckland.ac.nz',
+    #                                 database='stu_dyan263_COMPSCI_280_C_S2_2018',
+    #                                 charset='utf8')
+    # except:
+    #     print("Connection to UOA has failed...")
+    print("Connecting to local database...")
+    conn = mysql.connector.connect(user='root',
+                                   password='dy002200',
+                                   host='localhost',
+                                   database='compsci280',
+                                   charset='utf8')
+
     app = Application(conn)
     app.main_loop()
     conn.close()
