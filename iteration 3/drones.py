@@ -46,21 +46,36 @@ class DroneStore(object):
 
     def add(self, drone):
         """ Adds a new drone to the store. """
-        if drone.id in self._drones:
+        if drone.name in self._drones:
             raise Exception('Drone already exists in store')
         else:
             self._last_id += 1
             drone.id = self._last_id
             self._drones[drone.id] = drone
 
-    def addDrones(self, name, classtype, rescue=0):
+    def addDrones(self, args):
+        print(args)
         cursor = self._conn.cursor()
-        query = ''
-        print('addD')
-        print(name)
-        print(classtype)
-        print(rescue)
-        # query = 'INSERT INTO drones (Did, Oid, Mid, name, class_type, rescue) VALUES '
+
+        # Checks if drone is in store
+        query = 'SELECT COUNT(*) FROM Drones WHERE name = %s' % (args[0])
+        cursor.execute(query)
+        count = cursor.fetchall()[0][0]
+
+        # If rows are returned from name query, abort transaction
+        if count != 0:
+            raise Exception('Drone name already exists in store')
+        else:
+            # Drone is not in store
+            # Get highest ID and generate next unique drone ID
+            cursor.execute('SELECT MAX(Did) FROM Drones')
+            maxID = cursor.fetchall()[0][0]
+            newID = maxID + 1
+
+            # Insert new drone into database
+            query = 'INSERT INTO Drones (Did, Oid, Mid, name, class_type, rescue) VALUES (%d, NULL, NULL, %s, %d, %d)' % (newID, args[
+                0], args[1], args[2])
+            cursor.execute(query)
 
     def remove(self, drone):
         """ Removes a drone from the store. """
@@ -84,7 +99,7 @@ class DroneStore(object):
     def listDrones(self, args):
         cursor = self._conn.cursor()
         query = ''
-        if len(args[0]) != 0:
+        if len(args) != 0:
             argQuery = 'WHERE '
             try:
                 if args[0][1] == 'r':

@@ -45,9 +45,51 @@ class Application(object):
 
     def add(self, args):
         """ Adds a new drone. """
-        self._drones.addDrones(args)
+        # Initialise variables
+        name = ''
+        dclass = ''
+        res = False  # Rescue is False by default
 
-        raise Exception("Add method has not been implemented yet")
+        argsStart = 0
+
+        # Strips for name of drone
+        for i in range(len(args)):
+            if args[0][0] == "'" or args[0][0] == '"':
+                name = name + ' ' + args[i]
+                if not (len(args[i]) == 0) and args[i][-1] == "'":
+                    argsStart = i + 1
+                    break
+        try:
+            name = name[1:]
+        except:
+            pass
+
+        # Checks for -rescue argument
+        if len(args) == 3:
+            if args[2] == '-rescue':
+                res = 1
+            else:
+                res = 0
+
+        # Recombines to form proper argument list in format [name, class, rescue]
+        args = [name] + args[argsStart:]
+
+        # Checks for name and class input errors
+        if len(name) == 0:
+            raise Exception("name is required")
+        else:
+            try:
+                dclass = args[1]
+                if dclass[-1] == '1':
+                    dclass = 1
+                elif dclass[-1] == '2':
+                    dclass = 2
+            except:
+                raise Exception("class is required")
+
+        # Reformatted arguments list for query
+        args = [name, dclass, res]
+        self._drones.addDrones(args)
 
     def allocate(self, args):
         """ Allocates a drone to an operator. """
@@ -87,21 +129,21 @@ class Application(object):
 
 
 if __name__ == '__main__':
-    # try:
-    #     print("Connecting to UOA database...")
-    #     conn = mysql.connector.connect(user='dyan263',
-    #                                 password='dy002200',
-    #                                 host='studdb-mysql.fos.auckland.ac.nz',
-    #                                 database='stu_dyan263_COMPSCI_280_C_S2_2018',
-    #                                 charset='utf8')
-    # except:
-    #     print("Connection to UOA has failed...")
-    print("Connecting to local database...")
-    conn = mysql.connector.connect(user='root',
-                                   password='dy002200',
-                                   host='localhost',
-                                   database='compsci280',
-                                   charset='utf8')
+    try:
+        print("Connecting to UOA database...")
+        conn = mysql.connector.connect(user='dyan263',
+                                       password='dy002200',
+                                       host='studdb-mysql.fos.auckland.ac.nz',
+                                       database='stu_dyan263_COMPSCI_280_C_S2_2018',
+                                       charset='utf8')
+    except:
+        print("Connection to UOA has failed...")
+        print("Connecting to local database...")
+        conn = mysql.connector.connect(user='root',
+                                       password='dy002200',
+                                       host='localhost',
+                                       database='compsci280',
+                                       charset='utf8')
 
     app = Application(conn)
     app.main_loop()
