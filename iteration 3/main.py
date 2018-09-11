@@ -20,7 +20,7 @@ class Application(object):
         print 'Welcome to DALSys'
         cont = True
         while cont:
-            val = raw_input('> ').strip().lower()
+            val = raw_input('> ').strip()
             cmd = None
             args = {}
             if len(val) == 0:
@@ -109,7 +109,7 @@ class Application(object):
         try:
             print 'ID\tName\t\t\tClass\tRescue\tOperator'
             for drone in self._drones.listDrones(args):
-                print '%.4d\t%s\t\t%s\t%s\t%s' % (
+                print '%.4d\t%-20s\t%s\t%s\t%s' % (
                     drone.id, drone.name, drone.class_type, drone.rescue, drone.operator)
             if len(list(self._drones.listDrones(args))) != 0:
                 print '%d drones listed' % len(
@@ -121,11 +121,32 @@ class Application(object):
 
     def remove(self, args):
         """ Removes a drone. """
-        raise Exception("Remove method has not been implemented yet")
+        if len(args) == 1:
+            self._drones.removeDrones(int(args[0]))
+        elif len(args) == 0:
+            raise Exception("ID is required")
 
     def update(self, args):
         """ Updates the details for a drone. """
-        raise Exception("Update method has not been implemented yet")
+        try:
+            Did = int(args[0])
+        except:
+            raise Exception("ID is required")
+        name = None
+        dclass = None
+        res = 0
+
+        for i in args:
+            arg = i[0:2]
+            if arg == '-n':
+                name = i[7:-1]
+            elif arg == '-c':
+                dclass = int(i[-1])
+            elif arg == '-r':
+                res = 1
+
+        args = [Did, name, dclass, res]
+        self._drones.updateDrones(args)
 
 
 if __name__ == '__main__':

@@ -54,7 +54,6 @@ class DroneStore(object):
             self._drones[drone.id] = drone
 
     def addDrones(self, args):
-        print(args)
         cursor = self._conn.cursor()
 
         # Checks if drone is in store
@@ -77,12 +76,34 @@ class DroneStore(object):
                 0], args[1], args[2])
             cursor.execute(query)
 
+        cursor.close()
+
     def remove(self, drone):
         """ Removes a drone from the store. """
         if not drone.id in self._drones:
             raise Exception('Drone does not exist in store')
         else:
             del self._drones[drone.id]
+
+    def removeDrones(self, arg):
+        """ Removes drone with args = Did from database """
+        cursor = self._conn.cursor()
+
+        # Queries database to see if drone ID exists
+        query = "SELECT COUNT(*) FROM Drones WHERE Did = %d" % arg
+        cursor.execute(query)
+        result = cursor.fetchall()
+
+        # If it does, execute delete query
+        if result[0][0] == 1:
+            query = "DELETE FROM Drones WHERE Did = %d" % arg
+            cursor.execute(query)
+            print("Drone removed")
+        else:
+            # Else raise unknown drone error
+            raise Exception("Unknown drone")
+
+        cursor.close()
 
     def get(self, id):
         """ Retrieves a drone from the store by its ID. """
@@ -176,6 +197,64 @@ class DroneStore(object):
         operator.drone = drone
         drone.operator = operator
         self.save(drone)
+
+    def updateDrones(self, args):
+        # Initialise
+        cursor = self._conn.cursor()
+
+        # name, class_type, rescue variables from database and user respectively
+        databaseVars = []
+        userVars = args[1:]
+
+        # Update flag
+        updateNeeded = False
+
+        # Query arguments stored to list before joining by comma
+        queryStr = []
+
+        # Queries database to see if drone ID is valid
+        query = "SELECT name, class_type, rescue FROM Drones WHERE Did = %d" % args[0]
+        cursor.execute(query)
+        result = cursor.fetchall()
+
+        # If drone ID is valid, compare existing row with update command, then execute update query
+        if len(result) == 1:
+
+            baseName = result[0][0]
+            baseClass = result[0][1]
+            baseRescue = result[0][2]
+
+            databaseVars = [baseName, baseClass, baseRescue]
+
+            for i in range(3):
+                # If user did not specify a change in the variable, continue to next loop
+                if userVars[i] == None:
+                    continue
+                else:
+                    if userVars[i] != databaseVars[i]:
+                        updateNeeded = True
+                        if i == 0:
+                            queryStr.append("name = '" + userVars[0] + "'")
+                        elif i == 1:
+                            queryStr.append("class_type = " + str(userVars[1]))
+                        elif i == 2:
+                            queryStr.append("rescue = " + str(userVars[2]))
+
+            s = ','
+            queryJoin = s.join(queryStr)
+            if updateNeeded:
+                query = "UPDATE Drones SET " + queryJoin + \
+                    " WHERE Did = " + str(args[0])
+                cursor.execute(query)
+
+                print("- set ")
+            else:
+                raise Exception("No changes detected")
+        else:
+            # Else raise unknown drone error
+            raise Exception("Unknown drone")
+
+        cursor.close()
 
     def save(self, drone):
         """ Saves the drone to the database. """
