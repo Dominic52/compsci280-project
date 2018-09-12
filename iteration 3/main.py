@@ -59,6 +59,8 @@ class Application(object):
                 if not (len(args[i]) == 0) and args[i][-1] == "'":
                     argsStart = i + 1
                     break
+
+        # Tries to get name from user input
         try:
             name = name[1:]
         except:
@@ -74,7 +76,7 @@ class Application(object):
         # Recombines to form proper argument list in format [name, class, rescue]
         args = [name] + args[argsStart:]
 
-        # Checks for name and class input errors
+        # Checks for name and class inputs, if they do not exist returns error
         if len(name) == 0:
             raise Exception("name is required")
         else:
@@ -93,7 +95,22 @@ class Application(object):
 
     def allocate(self, args):
         """ Allocates a drone to an operator. """
-        raise Exception("Allocate method has not been implemented yet")
+        if len(args) == 0:
+            print("!! ID is required !!")
+            raise Exception("Operator is required")
+        elif len(args) == 1:
+            try:
+                args[0] = int(args[0])
+                print("!! Operator is required !!")
+            except:
+                raise Exception("ID is required")
+        elif len(args) > 2:
+            raise Exception("Too many arguments")
+        elif len(args) == 2:
+            args[0] = int(args[0])
+            self._drones.allocateDrones(args)
+        else:
+            raise Exception("Input Error")
 
     def help(self, args):
         """ Displays help information. """

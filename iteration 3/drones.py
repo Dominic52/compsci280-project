@@ -75,6 +75,7 @@ class DroneStore(object):
             query = 'INSERT INTO Drones (Did, Oid, Mid, name, class_type, rescue) VALUES (%d, NULL, NULL, %s, %d, %d)' % (newID, args[
                 0], args[1], args[2])
             cursor.execute(query)
+            self._conn.commit()
 
         cursor.close()
 
@@ -98,6 +99,7 @@ class DroneStore(object):
         if result[0][0] == 1:
             query = "DELETE FROM Drones WHERE Did = %d" % arg
             cursor.execute(query)
+            self._conn.commit()
             print("Drone removed")
         else:
             # Else raise unknown drone error
@@ -173,6 +175,17 @@ class DroneStore(object):
             yield drone
         cursor.close()
 
+    def validationError(self, string):
+        print("Validation errors:")
+        print(string)
+        while True:
+            print("Do you want to continue [Y/n]?")
+            userRes = raw_input().lower().strip()
+            if userRes == 'y':
+                break
+            elif userRes == 'n':
+                raise Exception("Allocation Cancelled")
+
     def allocate(self, drone, operator):
         """ Starts the allocation of a drone to an operator. """
         action = DroneAction(drone, operator, self._allocate)
@@ -188,6 +201,70 @@ class DroneStore(object):
 
         return action
 
+    def allocateDrones(self, args):
+        """Allocates drone to operator and saves to database"""
+        cursor = self._conn.cursor()
+        print(args)
+
+        # Queries database to see if drone ID is valid
+        query = 'SELECT Did, name, class_type, rescue, first_name FROM Drones LEFT JOIN Operators on Drones.Oid = Operators.Oid WHERE Did = %d' % args[
+            0]
+        cursor.execute(query)
+        result = cursor.fetchall()
+
+        # Valid drone check from query result
+        if len(result) != 1:
+            raise Exception("Unknown drone")
+
+        else:  # If query returns one and only one drone, drone is valid
+            drone = result[0]
+
+            # Validation error if drone already has an operator allocated
+            if drone[4] != None:
+                errorString = "- Drone already allocated to " + drone[4]
+
+                # Calls validationError to ask user if they want to overwrite drone's already allocated operator
+                # If user replies with 'N', aborts allocation
+                self.validationError(errorString)
+
+            # Run validation tests on operator specified
+            query = 'SELECT Oid, first_name, drone_license FROM Operators WHERE first_name = %s' % args[
+                1]
+            cursor.execute(query)
+            result = cursor.fetchall()
+
+            # Query should return one and only one valid operator OR no operators at all
+            # If multiple operators are returned, means first_name has duplicate entries which this vague assignment did not specify for
+            if len(result) == 0:    # No operators with name exists in database
+                while True:
+                    print(
+                        "Operator does not exist, do you want to add operator [Y/n]?")
+                    userRes = raw_input().lower().strip()
+                    if userRes == 'y':
+                        break
+                    elif userRes == 'n':
+                        raise Exception("Allocation Cancelled")
+
+                # Queries operator table for max Oid
+                cursor.execute('SELECT MAX(Oid) FROM Operators')
+
+                maxID = cursor.fetchall()[0][0]
+                newID = maxID + 1
+
+                # Insert new drone into database
+                query = 'INSERT INTO Operators (Oid, first_name, family_name, date_of_birth, drone_license, rescue_endorsement, operations) VALUES (%d, %s, NULL, NULL, 1, 0, 0)' % (
+                    newID, args[1])
+                print(query)
+                cursor.execute(query)
+            elif len(result) == 1:  # One operator with name exists in databse
+                print("there is ONE of said operator in database, continue with update")
+            else:
+                print("something funky happened. too many operators")
+
+        print(result)
+
+        cursor.close()
+
     def _allocate(self, drone, operator):
         """ Performs the actual allocation of the operator to the drone. """
         if operator.drone is not None:
@@ -201,6 +278,8 @@ class DroneStore(object):
     def updateDrones(self, args):
         # Initialise
         cursor = self._conn.cursor()
+
+        changes = ''
 
         # name, class_type, rescue variables from database and user respectively
         databaseVars = []
@@ -235,10 +314,14 @@ class DroneStore(object):
                         updateNeeded = True
                         if i == 0:
                             queryStr.append("name = '" + userVars[0] + "'")
+                            changes = changes + ' name to ' + userVars[0]
                         elif i == 1:
                             queryStr.append("class_type = " + str(userVars[1]))
+                            changes = changes + ' class to ' + str(userVars[1])
                         elif i == 2:
                             queryStr.append("rescue = " + str(userVars[2]))
+                            changes = changes + \
+                                ' rescue to ' + str(userVars[2])
 
             s = ','
             queryJoin = s.join(queryStr)
@@ -246,8 +329,9 @@ class DroneStore(object):
                 query = "UPDATE Drones SET " + queryJoin + \
                     " WHERE Did = " + str(args[0])
                 cursor.execute(query)
+                self._conn.commit()
 
-                print("- set ")
+                print("- set" + changes)
             else:
                 raise Exception("No changes detected")
         else:
