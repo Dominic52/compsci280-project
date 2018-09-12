@@ -220,6 +220,7 @@ class DroneStore(object):
             drone = result[0]
 
             # Validation error if drone already has an operator allocated
+            # Does not show this error message if drone has no operator
             if drone[4] != None:
                 errorString = "- Drone already allocated to " + drone[4]
 
@@ -227,9 +228,12 @@ class DroneStore(object):
                 # If user replies with 'N', aborts allocation
                 self.validationError(errorString)
 
+            ### OPERATOR VALIDATION TESTS ###
             # Run validation tests on operator specified
             query = 'SELECT Oid, first_name, drone_license FROM Operators WHERE first_name = %s' % args[
                 1]
+
+            print(query)
             cursor.execute(query)
             result = cursor.fetchall()
 
@@ -251,17 +255,35 @@ class DroneStore(object):
                 maxID = cursor.fetchall()[0][0]
                 newID = maxID + 1
 
-                # Insert new drone into database
-                query = 'INSERT INTO Operators (Oid, first_name, family_name, date_of_birth, drone_license, rescue_endorsement, operations) VALUES (%d, %s, NULL, NULL, 1, 0, 0)' % (
+                # Insert new operator into database
+                query = 'INSERT INTO Operators (Oid, first_name, family_name, date_of_birth, drone_license, rescue_endorsement, operations) VALUES (%d, %s, NULL, 0000-00-00, 1, 0, 0)' % (
                     newID, args[1])
-                print(query)
                 cursor.execute(query)
-            elif len(result) == 1:  # One operator with name exists in databse
-                print("there is ONE of said operator in database, continue with update")
-            else:
-                print("something funky happened. too many operators")
+                self._conn.commit()
+                print("Operator " + args[1] + "has been added")
 
-        print(result)
+                # Updates drone with new specified operator
+                query = 'UPDATE Drones SET Oid = %d WHERE Did = %d' % (
+                    newID, args[0])
+                cursor.execute(query)
+                print("Drone allocated to " + args[1])
+                self._conn.commit()
+
+            elif len(result) == 1:  # One operator with name exists in databse
+
+                # Saves operator(Oid, first_name, drone_license) to variable
+                operator = result[0]
+
+                ### LICENSE VALIDATION CHECKS ###
+                if drone[2] != operator[2]:
+                    print("not equal")
+                # Updates drone with new specified operator
+                query = 'UPDATE Drones SET Oid = %d WHERE Did = %d' % (
+                    operator[2], args[0])
+                cursor.execute(query)
+                print("Drone allocated to " + args[1])
+            else:
+                print("something funky happened. too many operators returned")
 
         cursor.close()
 
