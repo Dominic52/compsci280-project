@@ -56,6 +56,9 @@ class DroneStore(object):
     def addDrones(self, args):
         cursor = self._conn.cursor()
 
+        # Rescue string, appended with 'rescue ' if drone being added is rescue drone, blank otherwise
+        rescue = ''
+
         # Checks if drone is in store
         query = 'SELECT COUNT(*) FROM Drones WHERE name = %s' % (args[0])
         cursor.execute(query)
@@ -75,6 +78,12 @@ class DroneStore(object):
             query = 'INSERT INTO Drones (Did, Oid, Mid, name, class_type, rescue) VALUES (%d, NULL, NULL, %s, %d, %d)' % (newID, args[
                 0], args[1], args[2])
             cursor.execute(query)
+
+            # Appends 'rescue ' to confirmation print string
+            if args[2] == 1:
+                rescue = 'rescue '
+
+            print("Added " + rescue + "drone with ID %.4d" % newID)
             self._conn.commit()
 
         cursor.close()
@@ -122,6 +131,8 @@ class DroneStore(object):
     def listDrones(self, args):
         cursor = self._conn.cursor()
         query = ''
+
+        # Creates query string based on user arguments
         if len(args) != 0:
             argQuery = 'WHERE '
             try:
@@ -154,9 +165,12 @@ class DroneStore(object):
                 raise Exception(error)
 
         else:
+            # Default list method with no arguments returns all drones
             query = 'SELECT Did, name, class_type, rescue, first_name FROM Drones LEFT JOIN Operators on Drones.Oid = Operators.Oid ORDER BY Did'
 
         cursor.execute(query)
+
+        # Loops cursor row tuples and creates drone object with display format conversions
         for (did, name, class_type, rescue, operator) in cursor:
             drone = Drone(name, class_type, rescue)
             drone.id = did
@@ -176,12 +190,13 @@ class DroneStore(object):
         cursor.close()
 
     def validationError(self, string):
+        # Helper function for any validation checks with generic 'Do you want to continue' user overrides
         print("Validation errors:")
         print(string)
         while True:
             print("Do you want to continue [Y/n]?")
             userRes = raw_input().lower().strip()
-            if userRes == 'y':
+            if userRes == 'y' or userRes == '':
                 break
             elif userRes == 'n':
                 raise Exception("Allocation Cancelled")
@@ -204,7 +219,6 @@ class DroneStore(object):
     def allocateDrones(self, args):
         """Allocates drone to operator and saves to database"""
         cursor = self._conn.cursor()
-        print(args)
 
         # Queries database to see if drone ID is valid
         query = 'SELECT Did, name, class_type, rescue, first_name FROM Drones LEFT JOIN Operators on Drones.Oid = Operators.Oid WHERE Did = %d' % args[
@@ -233,7 +247,6 @@ class DroneStore(object):
             query = 'SELECT Oid, first_name, drone_license FROM Operators WHERE first_name = %s' % args[
                 1]
 
-            print(query)
             cursor.execute(query)
             result = cursor.fetchall()
 
@@ -244,7 +257,7 @@ class DroneStore(object):
                     print(
                         "Operator does not exist, do you want to add operator [Y/n]?")
                     userRes = raw_input().lower().strip()
-                    if userRes == 'y':
+                    if userRes == 'y' or userRes == '':
                         break
                     elif userRes == 'n':
                         raise Exception("Allocation Cancelled")
@@ -275,13 +288,23 @@ class DroneStore(object):
                 operator = result[0]
 
                 ### LICENSE VALIDATION CHECKS ###
+                # If drone classtype and operator license type do not match, ask user for override permission
                 if drone[2] != operator[2]:
-                    print("not equal")
-                # Updates drone with new specified operator
-                query = 'UPDATE Drones SET Oid = %d WHERE Did = %d' % (
-                    operator[2], args[0])
-                cursor.execute(query)
-                print("Drone allocated to " + args[1])
+                    errorString = '- Operator does not have correct drone license'
+                    self.validationError(errorString)
+
+                try:
+                    # Updates drone with new specified operator
+                    query = 'UPDATE Drones SET Oid = %d WHERE Did = %d' % (
+                        operator[0], args[0])
+
+                    cursor.execute(query)
+                    self._conn.commit()
+                    print("Drone allocated to " + args[1])
+                except:
+                    raise Exception(
+                        "Operator is already assigne to another drone")
+
             else:
                 print("something funky happened. too many operators returned")
 
