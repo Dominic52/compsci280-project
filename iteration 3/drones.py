@@ -273,7 +273,7 @@ class DroneStore(object):
                     newID, args[1])
                 cursor.execute(query)
                 self._conn.commit()
-                print("Operator " + args[1] + "has been added")
+                print("Operator " + args[1] + " has been added")
 
                 # Updates drone with new specified operator
                 query = 'UPDATE Drones SET Oid = %d WHERE Did = %d' % (
