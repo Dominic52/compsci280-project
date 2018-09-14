@@ -56,7 +56,7 @@ class Application(object):
         for i in range(len(args)):
             if args[0][0] == "'" or args[0][0] == '"':
                 name = name + ' ' + args[i]
-                if not (len(args[i]) == 0) and args[i][-1] == "'":
+                if not (len(args[i]) == 0) and (args[i][-1] == "'" or args[i][-1] == '"'):
                     argsStart = i + 1
                     break
 
