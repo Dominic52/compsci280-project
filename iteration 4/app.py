@@ -295,7 +295,10 @@ class DroneEditorWindow(EditorWindow):
     def __init__(self, parent, drone, save_action):
         self._drone = drone
         self._save_action = save_action
-        title = 'Drone: '
+        if self._drone == None:
+            title = 'Drone: <new>'
+        else:
+            title = 'Drone: ID' + str(self._drone.id)
         super(DroneEditorWindow, self).__init__(
             parent, title, self.save_drone)
 
@@ -392,7 +395,10 @@ class OperatorEditorWindow(EditorWindow):
     def __init__(self, parent, operator, save_action):
         self._operator = operator
         self._save_action = save_action
-        title = 'Operator: '
+        if self._operator == None:
+            title = 'Operator: <new>'
+        else:
+            title = 'Operator: ID' + str(self._operator.Oid)
         super(OperatorEditorWindow, self).__init__(
             parent, title, self.save_operator)
 
