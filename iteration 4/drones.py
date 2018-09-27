@@ -72,7 +72,10 @@ class DroneStore(object):
             # Get highest ID and generate next unique drone ID
             cursor.execute('SELECT MAX(Did) FROM Drones')
             maxID = cursor.fetchall()[0][0]
-            newID = maxID + 1
+            if maxID == None:
+                newID = 1
+            else:
+                newID = maxID + 1
 
             # Insert new drone into database
             query = 'INSERT INTO Drones (Did, Oid, Mid, name, class_type, rescue) VALUES (%d, NULL, NULL, %s, %d, %d)' % (newID, args[
@@ -176,16 +179,16 @@ class DroneStore(object):
             drone.id = did
             drone.operator = operator
 
-            if drone.class_type == 1:
-                drone.class_type = 'One'
-            else:
-                drone.class_type = 'Two'
-            if drone.rescue == True:
-                drone.rescue = 'Yes'
-            else:
-                drone.rescue = 'No'
-            if drone.operator == None:
-                drone.operator = '<none>'
+            # if drone.class_type == 1:
+            #     drone.class_type = 'One'
+            # else:
+            #     drone.class_type = 'Two'
+            # if drone.rescue == True:
+            #     drone.rescue = 'Yes'
+            # else:
+            #     drone.rescue = 'No'
+            # if drone.operator == None:
+            #     drone.operator = '<none>'
             yield drone
         cursor.close()
 
@@ -266,7 +269,10 @@ class DroneStore(object):
                 cursor.execute('SELECT MAX(Oid) FROM Operators')
 
                 maxID = cursor.fetchall()[0][0]
-                newID = maxID + 1
+                if maxID == None:
+                    newID = 1
+                else:
+                    newID = maxID + 1
 
                 # Insert new operator into database
                 query = 'INSERT INTO Operators (Oid, first_name, family_name, date_of_birth, drone_license, rescue_endorsement, operations) VALUES (%d, %s, NULL, 0000-00-00, 1, 0, 0)' % (
@@ -340,7 +346,6 @@ class DroneStore(object):
         query = "SELECT name, class_type, rescue FROM Drones WHERE Did = %d" % args[0]
         cursor.execute(query)
         result = cursor.fetchall()
-
         # If drone ID is valid, compare existing row with update command, then execute update query
         if len(result) == 1:
 

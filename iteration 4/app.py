@@ -115,14 +115,17 @@ class DroneListWindow(ListWindow):
 
     def populate_data(self):
         """ Populates the data in the view. """
-        print 'TODO: Load data'
-        # The following is a dummy record - need to remove and replace with data from the store
-        self.tree.insert('', 'end', values=(1, 'Test', 1, 'No', '<None>'))
+        for i in self.tree.get_children():
+            self.tree.delete(i)
+
+        listOfDrones = self.drones.listDrones('')
+        for i in listOfDrones:
+            self.tree.insert('', 'end', values=(
+                i.id, i.name, i.class_type, i.rescue, i.operator))
 
     def add_drone(self):
         """ Starts a new drone and displays it in the list. """
         # Start a new drone instance
-        print 'TODO: Start a new drone'
         drone = None
 
         # Display the drone
@@ -130,7 +133,8 @@ class DroneListWindow(ListWindow):
 
     def _save_new_drone(self, drone):
         """ Saves the drone in the store and updates the list. """
-        self.drones.add(drone)
+        self.drones.addDrones(drone)
+
         self.populate_data()
 
     def edit_drone(self, event):
@@ -140,15 +144,17 @@ class DroneListWindow(ListWindow):
         item_id = item['values'][0]
 
         # Load the drone from the store
-        print 'TODO: Load drone with ID %04d' % (item_id)
-        drone = None
+        allDrones = list(self.drones.listDrones(''))
+        for d in allDrones:
+            if d.id == item_id:
+                drone = d
 
         # Display the drone
         self.view_drone(drone, self._update_drone)
 
     def _update_drone(self, drone):
         """ Saves the new details of the drone. """
-        self.drones.save(drone)
+        self.drones.updateDrones(drone)
         self.populate_data()
 
     def view_drone(self, drone, save_action):
@@ -179,10 +185,12 @@ class EditorWindow(object):
         # Add the command buttons
         add_button = tk.Button(self.frame, text="Save",
                                command=save_action, width=20, padx=5, pady=5)
-        add_button.grid(in_=self.frame, row=last_row + 1, column=1, sticky=tk.E)
+        add_button.grid(in_=self.frame, row=last_row +
+                        1, column=1, sticky=tk.E)
         exit_button = tk.Button(self.frame, text="Close",
                                 command=self.close, width=20, padx=5, pady=5)
-        exit_button.grid(in_=self.frame, row=last_row + 2, column=1, sticky=tk.E)
+        exit_button.grid(in_=self.frame, row=last_row +
+                         2, column=1, sticky=tk.E)
 
     def add_editor_widgets(self):
         """ Adds the editor widgets to the frame - this needs to be overriden in inherited classes. 
@@ -194,45 +202,123 @@ class EditorWindow(object):
         """ Closes the editor window. """
         self.root.destroy()
 
+
 class DroneEditorWindow(EditorWindow):
     """ Editor window for drones. """
 
     def __init__(self, parent, drone, save_action):
         # TODO: Add either the drone name or <new> in the window title, depending on whether this is a new
         # drone or not
-        super(DroneEditorWindow, self).__init__(parent, 'Drone: ', self.save_drone)
         self._drone = drone
         self._save_action = save_action
+        title = 'Drone: '
+        super(DroneEditorWindow, self).__init__(
+            parent, title, self.save_drone)
 
-        # TODO: Load drone details
+        # If new drone, set default values
+        if self._drone == None:
+            # Default name
+            n = ''
+            # Default class
+            c = 'One'
+
+            # Default rescue
+            r = 'No'
+        else:
+            # Drone name is displayed
+            n = self._drone.name
+
+            # Drone class is displayed
+            if self._drone.class_type == 1:
+                c = 'One'
+            else:
+                c = 'Two'
+
+            # Rescue is displayed
+            if self._drone.rescue == 0:
+                r = 'No'
+            else:
+                r = 'Yes'
+
+        # Name entry line init
+        namevar = tk.StringVar(self.frame, value=n)
+        self.nameEntry = tk.Entry(self.frame, width=40, textvariable=namevar)
+
+        tk.Label(self.frame, text='Name:', justify=tk.LEFT).grid(
+            row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.nameEntry.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
+
+        # Name drone class line init
+        self.droneClass = ttk.Combobox(
+            self.frame)
+        self.droneClass['values'] = ('One', 'Two')
+        self.droneClass.set(c)
+        self.droneClass.config(width=4)
+        tk.Label(self.frame, text='Drone Class:',
+                 justify=tk.LEFT).grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+        self.droneClass.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
+
+        # Name rescue line init
+        self.rescue = ttk.Combobox(
+            self.frame)
+        self.rescue['values'] = ('Yes', 'No')
+        self.rescue.set(r)
+        self.rescue.config(width=4)
+        tk.Label(self.frame, text='Rescue Drone:',
+                 justify=tk.LEFT).grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+        self.rescue.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
 
     def add_editor_widgets(self):
         """ Adds the widgets dor editing a drone. """
-        print 'TODO: Create widgets and populate them with data'
-        return -1
+        return 2
 
     def save_drone(self):
         """ Updates the drone details and calls the save action. """
-        print 'TODO: Update the drone from the widgets'
-        self._save_action(self._drone)
+        name = "'" + self.nameEntry.get() + "'"
+        dclass = self.droneClass.get()
+        res = self.rescue.get()
+
+        if dclass == 'One':
+            dclass = 1
+        else:
+            dclass = 2
+
+        if res == 'Yes':
+            res = 1
+        else:
+            res = 0
+
+        # Prepares to add new drone
+        if self._drone == None:
+            self._drone = [name, dclass, res]
+            self._save_action(self._drone)
+            self._drone = None
+        else:  # Prepares to update drone
+            tempDrone = self._drone
+            Did = self._drone.id
+            name = name.strip("'")
+            self._drone = [Did, name, dclass, res]
+            self._save_action(self._drone)
+            self._drone = tempDrone
 
 
 if __name__ == '__main__':
-    try:
-        print("Connecting to UOA database...")
-        conn = mysql.connector.connect(user='dyan263',
-                                       password='dy002200',
-                                       host='studdb-mysql.fos.auckland.ac.nz',
-                                       database='stu_dyan263_COMPSCI_280_C_S2_2018',
-                                       charset='utf8')
-    except:
-        print("Connection to UOA has failed...")
-        print("Connecting to local database...")
-        conn = mysql.connector.connect(user='root',
-                                       password='dy002200',
-                                       host='localhost',
-                                       database='compsci280',
-                                       charset='utf8')
+
+    print("Connection to UOA has failed...")
+    print("Connecting to local database...")
+    conn = mysql.connector.connect(user='root',
+                                   password='dy002200',
+                                   host='localhost',
+                                   database='compsci280',
+                                   charset='utf8')
+
+    # print("Connecting to UOA database...")
+    # conn = mysql.connector.connect(user='dyan263',
+    #                                password='dy002200',
+    #                                host='studdb-mysql.fos.auckland.ac.nz',
+    #                                database='stu_dyan263_COMPSCI_280_C_S2_2018',
+    #                                charset='utf8')
+
     app = Application(conn)
     app.main_loop()
     conn.close()
