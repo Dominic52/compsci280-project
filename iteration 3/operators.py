@@ -4,15 +4,16 @@ from datetime import date
 class Operator(object):
     """ Stores details on an operator. """
 
-    def __init__(self):
-        self.id = 0
-        self.first_name = None
-        self.family_name = None
+    def __init__(self, Oid, first, family, drone_license, res_end, oper, Did):
+        self.id = Oid
+        self.first_name = first
+        self.family_name = family
         self.date_of_birth = None
-        self.drone_license = None
-        self.rescue_endorsement = False
-        self.operations = 0
-        self.drone = None
+        self.drone_license = drone_license
+        self.rescue_endorsement = res_end
+        self.operations = oper
+        self.drone = Did
+        self.drone_name = None
 
 
 class OperatorAction(object):
@@ -71,7 +72,8 @@ class OperatorStore(object):
                         "Operator should be at least twenty to hold a class 2 license")
         if operator.rescue_endorsement == True:
             if operator.operations < 5:
-                action.add_message("Operator should have been involved in five prior rescue operations to hold a rescue drone endorsement")
+                action.add_message(
+                    "Operator should have been involved in five prior rescue operations to hold a rescue drone endorsement")
         return action
 
     def _add(self, operator):
@@ -107,6 +109,24 @@ class OperatorStore(object):
         """ Lists all the _operators in the system. """
         for _operator in self._operators:
             yield _operator
+
+    def listOperators(self, args):
+        cursor = self._conn.cursor()
+
+        # Creates query string based on user arguments
+        # Default list method with no arguments returns all operators
+        query = 'SELECT O.Oid, O.first_name, O.family_name, O.drone_license, O.rescue_endorsement, O.operations, Did, name FROM Operators O LEFT JOIN Drones D on O.Oid = D.Oid ORDER BY Oid'
+
+        cursor.execute(query)
+
+        # Loops cursor row tuples and creates drone object with display format conversions
+        for (Oid, first_name, family_name, drone_license, rescue_endorsement, operations, Did, name) in cursor:
+            operator = Operator(Oid, first_name, family_name,
+                                drone_license, rescue_endorsement, operations, Did)
+            operator.drone_name = name
+
+            yield operator
+        cursor.close()
 
     def save(self):
         """ Saves the store to the database. """
