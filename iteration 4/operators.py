@@ -130,7 +130,6 @@ class OperatorStore(object):
 
     def addOperators(self, args):
         cursor = self._conn.cursor()
-
         cursor.execute('SELECT MAX(Oid) FROM Operators')
         maxID = cursor.fetchall()[0][0]
         if maxID == None:
@@ -138,11 +137,22 @@ class OperatorStore(object):
         else:
             newID = maxID + 1
 
-            # Insert new drone into database
-        query = 'INSERT INTO Operators (Oid, first_name, family_name, date_of_birth, drone_license, rescue_endorsement, operations) VALUES (%d, %s, %s, NULL, %d, %d, %d)' % (newID, args[
+        # Insert new operator into database
+        query = 'INSERT INTO Operators (Oid, first_name, family_name, date_of_birth, drone_license, rescue_endorsement, operations) VALUES (%d, %s, %s, 0000-00-00, %d, %d, %d)' % (newID, args[
                 0], args[1], args[2], args[3], args[4])
 
-        print(query)
+        cursor.execute(query)
+
+        self._conn.commit()
+
+        cursor.close()
+
+    def updateOperators(self, args):
+        cursor = self._conn.cursor()
+
+        query = 'UPDATE Operators SET first_name = %s, family_name = %s, drone_license = %d, rescue_endorsement = %d, operations = %d WHERE Oid = %d' % (
+            args[1], args[2], args[3], args[4], args[5], args[0])
+
         cursor.execute(query)
 
         self._conn.commit()

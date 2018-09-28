@@ -515,13 +515,17 @@ class OperatorEditorWindow(EditorWindow):
 
     def save_operator(self):
         """ Updates the drone details and calls the save action. """
-        first_name = self.nameEntry.get()
-        family_name = self.famnameEntry.get()
+        first_name = "'" + self.nameEntry.get() + "'"
+        family_name = "'" + self.famnameEntry.get() + "'"
         if self.droneLicense.get() == 'Two':
             drone_license = 2
         else:
             drone_license = 1
-        rescue_endorsement = self.endorsement.get()
+
+        if self.endorsement.get() == 'Yes':
+            rescue_endorsement = 1
+        else:
+            rescue_endorsement = 0
         operations = int(self.ops.get())
 
         try:
@@ -529,7 +533,6 @@ class OperatorEditorWindow(EditorWindow):
                 print("Adding new Op")
                 self._operator = [first_name, family_name,
                                   drone_license, rescue_endorsement, operations]
-                print(self._operator)
                 self._save_action(self._operator)
                 self._operator = None
             else:
@@ -538,7 +541,6 @@ class OperatorEditorWindow(EditorWindow):
                 Oid = self._operator.Oid
                 self._operator = [Oid, first_name, family_name,
                                   drone_license, rescue_endorsement, operations]
-                print(self._operator)
                 self._save_action(self._operator)
                 self._operator = tempOp
         except:
