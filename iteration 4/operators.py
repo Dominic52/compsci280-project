@@ -128,6 +128,27 @@ class OperatorStore(object):
             yield operator
         cursor.close()
 
+    def addOperators(self, args):
+        cursor = self._conn.cursor()
+
+        cursor.execute('SELECT MAX(Oid) FROM Operators')
+        maxID = cursor.fetchall()[0][0]
+        if maxID == None:
+            newID = 1
+        else:
+            newID = maxID + 1
+
+            # Insert new drone into database
+        query = 'INSERT INTO Operators (Oid, first_name, family_name, date_of_birth, drone_license, rescue_endorsement, operations) VALUES (%d, %s, %s, NULL, %d, %d, %d)' % (newID, args[
+                0], args[1], args[2], args[3], args[4])
+
+        print(query)
+        cursor.execute(query)
+
+        self._conn.commit()
+
+        cursor.close()
+
     def save(self):
         """ Saves the store to the database. """
         pass    # TODO: we don't have a database yet
