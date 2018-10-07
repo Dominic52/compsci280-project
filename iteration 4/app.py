@@ -491,7 +491,8 @@ class OperatorEditorWindow(EditorWindow):
         self.endorsement.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
 
         # Operations
-        self.ops = tk.Spinbox(self.frame, from_=0, to=999, width=8,
+        numOps = tk.StringVar(self.frame, value=o)
+        self.ops = tk.Spinbox(self.frame, from_=0, to=999, width=8, textvariable=numOps,
                               command=self.updateEndorsement)
         tk.Label(self.frame, text='Number of Operations:', justify=tk.LEFT).grid(
             row=4, column=0, padx=5, pady=5, sticky=tk.W)
@@ -550,20 +551,20 @@ class OperatorEditorWindow(EditorWindow):
 
 if __name__ == '__main__':
 
-    # print("Connection to UOA has failed...")
-    # print("Connecting to local database...")
-    # conn = mysql.connector.connect(user='root',
-    #                                password='dy002200',
-    #                                host='localhost',
-    #                                database='compsci280',
-    #                                charset='utf8')
-
-    print("Connecting to UOA database...")
-    conn = mysql.connector.connect(user='dyan263',
+    print("Connection to UOA has failed...")
+    print("Connecting to local database...")
+    conn = mysql.connector.connect(user='root',
                                    password='dy002200',
-                                   host='studdb-mysql.fos.auckland.ac.nz',
-                                   database='stu_dyan263_COMPSCI_280_C_S2_2018',
+                                   host='localhost',
+                                   database='compsci280',
                                    charset='utf8')
+
+    # print("Connecting to UOA database...")
+    # conn = mysql.connector.connect(user='dyan263',
+    #                                password='dy002200',
+    #                                host='studdb-mysql.fos.auckland.ac.nz',
+    #                                database='stu_dyan263_COMPSCI_280_C_S2_2018',
+    #                                charset='utf8')
 
     app = Application(conn)
     app.main_loop()
