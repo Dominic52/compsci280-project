@@ -220,11 +220,19 @@ class OperatorListWindow(ListWindow):
         # Retrieve the identifer of the drone
         item = self.tree.item(self.tree.focus())
         item_id = item['values'][0]
-
+        operator = None
         # Load the drone from the store
-        allOperators = list(self.operators.listOpeartors(''))
+        allOperators = list(self.operators.listOperators(''))
         for o in allOperators:
-            if o.id == item_id:
+            fn = o.first_name
+            famn = o.family_name
+            if fn == None:
+                fn = ''
+            if famn == None:
+                famn = ''
+            name = fn + ' ' + famn
+            name = name.strip(' ')
+            if name == item_id:
                 operator = o
 
         # Display the drone
@@ -375,18 +383,22 @@ class DroneEditorWindow(EditorWindow):
         else:
             res = 0
 
-        # Prepares to add new drone
-        if self._drone == None:
-            self._drone = [name, dclass, res]
-            self._save_action(self._drone)
+        try:
+            # Prepares to add new drone
+            if self._drone == None:
+                self._drone = [name, dclass, res]
+                self._save_action(self._drone)
+                self._drone = None
+            else:  # Prepares to update drone
+                tempDrone = self._drone
+                Did = self._drone.id
+                name = name.strip("'")
+                self._drone = [Did, name, dclass, res]
+                self._save_action(self._drone)
+                self._drone = tempDrone
+        except:
             self._drone = None
-        else:  # Prepares to update drone
-            tempDrone = self._drone
-            Did = self._drone.id
-            name = name.strip("'")
-            self._drone = [Did, name, dclass, res]
-            self._save_action(self._drone)
-            self._drone = tempDrone
+            raise(Exception("Drone already in list"))
 
 
 class OperatorEditorWindow(EditorWindow):
@@ -503,50 +515,55 @@ class OperatorEditorWindow(EditorWindow):
 
     def save_operator(self):
         """ Updates the drone details and calls the save action. """
-        # name = "'" + self.nameEntry.get() + "'"
-        # dclass = self.droneLicense.get()
-        # res = self.rescue.get()
+        first_name = "'" + self.nameEntry.get() + "'"
+        family_name = "'" + self.famnameEntry.get() + "'"
+        if self.droneLicense.get() == 'Two':
+            drone_license = 2
+        else:
+            drone_license = 1
 
-        # if dclass == 'One':
-        #     dclass = 1
-        # else:
-        #     dclass = 2
+        if self.endorsement.get() == 'Yes':
+            rescue_endorsement = 1
+        else:
+            rescue_endorsement = 0
+        operations = int(self.ops.get())
 
-        # if res == 'Yes':
-        #     res = 1
-        # else:
-        #     res = 0
-
-        # # Prepares to add new drone
-        # if self._drone == None:
-        #     self._drone = [name, dclass, res]
-        #     self._save_action(self._drone)
-        #     self._drone = None
-        # else:  # Prepares to update drone
-        #     tempDrone = self._drone
-        #     Did = self._drone.id
-        #     name = name.strip("'")
-        #     self._drone = [Did, name, dclass, res]
-        #     self._save_action(self._drone)
-        #     self._drone = tempDrone
+        try:
+            if self._operator == None:
+                print("Adding new Op")
+                self._operator = [first_name, family_name,
+                                  drone_license, rescue_endorsement, operations]
+                self._save_action(self._operator)
+                self._operator = None
+            else:
+                print("Updating Op")
+                tempOp = self._operator
+                Oid = self._operator.Oid
+                self._operator = [Oid, first_name, family_name,
+                                  drone_license, rescue_endorsement, operations]
+                self._save_action(self._operator)
+                self._operator = tempOp
+        except:
+            self._operator == None
+            raise(Exception("App go Boom"))
 
 
 if __name__ == '__main__':
 
-    print("Connection to UOA has failed...")
-    print("Connecting to local database...")
-    conn = mysql.connector.connect(user='root',
-                                   password='dy002200',
-                                   host='localhost',
-                                   database='compsci280',
-                                   charset='utf8')
-
-    # print("Connecting to UOA database...")
-    # conn = mysql.connector.connect(user='dyan263',
+    # print("Connection to UOA has failed...")
+    # print("Connecting to local database...")
+    # conn = mysql.connector.connect(user='root',
     #                                password='dy002200',
-    #                                host='studdb-mysql.fos.auckland.ac.nz',
-    #                                database='stu_dyan263_COMPSCI_280_C_S2_2018',
+    #                                host='localhost',
+    #                                database='compsci280',
     #                                charset='utf8')
+
+    print("Connecting to UOA database...")
+    conn = mysql.connector.connect(user='dyan263',
+                                   password='dy002200',
+                                   host='studdb-mysql.fos.auckland.ac.nz',
+                                   database='stu_dyan263_COMPSCI_280_C_S2_2018',
+                                   charset='utf8')
 
     app = Application(conn)
     app.main_loop()
