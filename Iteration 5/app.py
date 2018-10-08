@@ -4,6 +4,7 @@ import ttk
 
 from drones import Drone, DroneStore
 from operators import Operator, OperatorStore
+from trackingsystem import TrackingSystem, DroneLocation
 
 
 class Application(object):
@@ -27,6 +28,12 @@ class Application(object):
         operator_button = tk.Button(
             frame, text="View Operators", command=self.view_operators, width=40, padx=5, pady=5)
         operator_button.pack(side=tk.TOP)
+        view_map_button = tk.Button(
+            frame, text="View Maps", command=self.view_maps, width=40, padx=5, pady=5)
+        view_map_button.pack(side=tk.TOP)
+        allocate_drone_button = tk.Button(
+            frame, text="Allocate Drone", command=self.view_allocate_drone, width=40, padx=5, pady=5)
+        allocate_drone_button.pack(side=tk.TOP)
         exit_button = tk.Button(frame, text="Exit System",
                                 command=quit, width=40, padx=5, pady=5)
         exit_button.pack(side=tk.TOP)
@@ -45,6 +52,16 @@ class Application(object):
     def view_drones(self):
         """ Display the drones. """
         wnd = DroneListWindow(self)
+        self.root.wait_window(wnd.root)
+
+    def view_maps(self):
+        """ Display the maps. """
+        wnd = MapWindow(self)
+        self.root.wait_window(wnd.root)
+
+    def view_allocation(self):
+        """ Displays allocation window. """
+        wnd = AllocateWindow(self)
         self.root.wait_window(wnd.root)
 
 
@@ -551,20 +568,20 @@ class OperatorEditorWindow(EditorWindow):
 
 if __name__ == '__main__':
 
-    print("Connection to UOA has failed...")
-    print("Connecting to local database...")
-    conn = mysql.connector.connect(user='root',
-                                   password='dy002200',
-                                   host='localhost',
-                                   database='compsci280',
-                                   charset='utf8')
-
-    # print("Connecting to UOA database...")
-    # conn = mysql.connector.connect(user='dyan263',
+    # print("Connection to UOA has failed...")
+    # print("Connecting to local database...")
+    # conn = mysql.connector.connect(user='root',
     #                                password='dy002200',
-    #                                host='studdb-mysql.fos.auckland.ac.nz',
-    #                                database='stu_dyan263_COMPSCI_280_C_S2_2018',
+    #                                host='localhost',
+    #                                database='compsci280',
     #                                charset='utf8')
+
+    print("Connecting to UOA database...")
+    conn = mysql.connector.connect(user='dyan263',
+                                   password='dy002200',
+                                   host='studdb-mysql.fos.auckland.ac.nz',
+                                   database='stu_dyan263_COMPSCI_280_C_S2_2018',
+                                   charset='utf8')
 
     app = Application(conn)
     app.main_loop()
