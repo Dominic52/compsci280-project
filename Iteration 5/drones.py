@@ -7,6 +7,7 @@ class Drone(object):
         self.class_type = class_type
         self.rescue = rescue
         self.operator = None
+        self.map = None
 
 
 class DroneAction(object):
@@ -162,23 +163,23 @@ class DroneStore(object):
                         else:
                             e = "Unknown drone class " + str(num[1])
                             raise Exception(e)
-                query = 'SELECT Did, name, class_type, rescue, first_name FROM Drones LEFT JOIN Operators on Drones.Oid = Operators.Oid ' + \
+                query = 'SELECT Did, name, class_type, rescue, first_name, Mid FROM Drones LEFT JOIN Operators on Drones.Oid = Operators.Oid ' + \
                     argQuery + ' ORDER BY Did'
             except Exception as error:
                 raise Exception(error)
 
         else:
             # Default list method with no arguments returns all drones
-            query = 'SELECT Did, name, class_type, rescue, first_name FROM Drones LEFT JOIN Operators on Drones.Oid = Operators.Oid ORDER BY Did'
+            query = 'SELECT Did, name, class_type, rescue, first_name, Mid FROM Drones LEFT JOIN Operators on Drones.Oid = Operators.Oid ORDER BY Did'
 
         cursor.execute(query)
 
         # Loops cursor row tuples and creates drone object with display format conversions
-        for (did, name, class_type, rescue, operator) in cursor:
+        for (did, name, class_type, rescue, operator, mid) in cursor:
             drone = Drone(name, class_type, rescue)
             drone.id = did
             drone.operator = operator
-
+            drone.map = mid
             # if drone.class_type == 1:
             #     drone.class_type = 'One'
             # else:

@@ -4,6 +4,7 @@ import ttk
 
 from drones import Drone, DroneStore
 from operators import Operator, OperatorStore
+from maps import Map, MapStore
 from trackingsystem import TrackingSystem, DroneLocation
 
 
@@ -14,6 +15,7 @@ class Application(object):
         # Initialise the stores
         self.drones = DroneStore(conn)
         self.operators = OperatorStore(conn)
+        self.maps = MapStore(conn)
 
         # Initialise the GUI window
         self.root = tk.Tk()
@@ -32,7 +34,7 @@ class Application(object):
             frame, text="View Maps", command=self.view_maps, width=40, padx=5, pady=5)
         view_map_button.pack(side=tk.TOP)
         allocate_drone_button = tk.Button(
-            frame, text="Allocate Drone", command=self.view_allocate_drone, width=40, padx=5, pady=5)
+            frame, text="Allocate Drone", command=self.view_allocation, width=40, padx=5, pady=5)
         allocate_drone_button.pack(side=tk.TOP)
         exit_button = tk.Button(frame, text="Exit System",
                                 command=quit, width=40, padx=5, pady=5)
@@ -56,12 +58,12 @@ class Application(object):
 
     def view_maps(self):
         """ Display the maps. """
-        wnd = MapWindow(self)
+        wnd = MapWindow(self, 'Map Viewer')
         self.root.wait_window(wnd.root)
 
     def view_allocation(self):
         """ Displays allocation window. """
-        wnd = AllocateWindow(self)
+        wnd = AllocateWindow(self, 'Allocate Drone')
         self.root.wait_window(wnd.root)
 
 
@@ -72,6 +74,7 @@ class ListWindow(object):
         # Add a variable to hold the stores
         self.drones = parent.drones
         self.operators = parent.operators
+        self.maps = parent.maps
 
         # Initialise the new top-level window (modal dialog)
         self._parent = parent.root
@@ -147,7 +150,7 @@ class DroneListWindow(ListWindow):
         drone = None
 
         # Display the drone
-        self.view_drone(drone, self._save_new_drone)
+        self.view_drone(drone, None, self._save_new_drone)
 
     def _save_new_drone(self, drone):
         """ Saves the drone in the store and updates the list. """
@@ -167,25 +170,35 @@ class DroneListWindow(ListWindow):
             if d.id == item_id:
                 drone = d
 
+        # Load all maps from store and passes the assigned map along with drone
+        # (Monkey implementation because the assignment brief sucks ass)
+        allMaps = list(self.maps.listMaps())
+        for m in allMaps:
+            if drone.map == m.mid:
+                assignedMap = m
+                break
+            else:
+                assignedMap = None
+
         # Display the drone
-        self.view_drone(drone, self._update_drone)
+        self.view_drone(drone, assignedMap, self._update_drone)
 
     def _update_drone(self, drone):
         """ Saves the new details of the drone. """
         self.drones.updateDrones(drone)
         self.populate_data()
 
-    def view_drone(self, drone, save_action):
+    def view_drone(self, drone, assignedMap, save_action):
         """ Displays the drone editor. """
-        wnd = DroneEditorWindow(self, drone, save_action)
+        wnd = DroneEditorWindow(self, drone, assignedMap, save_action)
         self.root.wait_window(wnd.root)
 
 
 class OperatorListWindow(ListWindow):
-    """ Window to display a list of drones. """
+    """ Window to display a list of operators. """
 
     def __init__(self, parent):
-        super(OperatorListWindow, self).__init__(parent, 'Drones')
+        super(OperatorListWindow, self).__init__(parent, 'Oprators')
 
         # Add the list and fill it with data
         columns = ('Name', 'Class', 'Rescue', 'Operations', 'Drone')
@@ -267,9 +280,9 @@ class OperatorListWindow(ListWindow):
 
 ####
 ####
-####
-# Editor Windows
-####
+############################################################################################################
+################################################# Editor Windows ###########################################
+############################################################################################################
 ####
 ####
 
@@ -317,8 +330,10 @@ class EditorWindow(object):
 class DroneEditorWindow(EditorWindow):
     """ Editor window for drones. """
 
-    def __init__(self, parent, drone, save_action):
+    def __init__(self, parent, drone, assignedMap, save_action):
+        self.track = TrackingSystem()
         self._drone = drone
+        self._map = assignedMap
         self._save_action = save_action
         if self._drone == None:
             title = 'Drone: <new>'
@@ -336,6 +351,9 @@ class DroneEditorWindow(EditorWindow):
 
             # Default rescue
             r = 'No'
+
+            # Unassigned map
+            point = 'n/a'
         else:
             # Drone name is displayed
             n = self._drone.name
@@ -351,6 +369,17 @@ class DroneEditorWindow(EditorWindow):
                 r = 'No'
             else:
                 r = 'Yes'
+
+            # Get map and generate Coordinates
+            if self._map == None:
+                point = 'n/a'
+            else:
+                ts = self.track.retrieve(self._map, self._drone)
+                if ts.is_valid():
+                    point = ts.position()
+                    point = '(' + str(point[0]) + ', ' + str(point[1]) + ')'
+                else:
+                    point = 'n/a'
 
         # Name entry line init
         namevar = tk.StringVar(self.frame, value=n)
@@ -380,9 +409,18 @@ class DroneEditorWindow(EditorWindow):
                  justify=tk.LEFT).grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
         self.rescue.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
 
+        # Map coordinates
+        coords = tk.StringVar(self.frame, value=point)
+        self.map = tk.Entry(self.frame, width=40,
+                            textvariable=coords, state='disabled')
+
+        tk.Label(self.frame, text='Location: ', justify=tk.LEFT).grid(
+            row=3, column=0, padx=5, pady=5, sticky=tk.W)
+        self.map.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
+
     def add_editor_widgets(self):
         """ Adds the widgets dor editing a drone. """
-        return 2
+        return 3
 
     def save_drone(self):
         """ Updates the drone details and calls the save action. """
@@ -564,6 +602,98 @@ class OperatorEditorWindow(EditorWindow):
         except:
             self._operator == None
             raise(Exception("App go Boom"))
+
+
+class MapWindow(object):
+    def __init__(self, parent, title):
+        # Add a variable to hold the stores
+        self.drones = parent.drones
+        self.operators = parent.operators
+        self.maps = parent.maps
+
+        # Initialise the new top-level window (modal dialog)
+        self._parent = parent.root
+        self.root = tk.Toplevel(parent.root)
+        self.root.title(title)
+        self.root.transient(parent.root)
+        self.root.grab_set()
+
+        # Initialise the top level frame
+        self.frame = tk.Frame(self.root)
+        self.frame.pack(side=tk.TOP, fill=tk.BOTH,
+                        expand=tk.Y, padx=10, pady=10)
+
+        # Map dropdown
+        self.mapdropdown = ttk.Combobox(
+            self.frame)
+        maplist = list(self.maps.listMaps())
+        values = []
+        for i in range(len(maplist)):
+            values.append(maplist[i].name)
+        self.mapdropdown['values'] = tuple(values)
+        self.mapdropdown.set(values[0])
+        self.mapdropdown.config(width=50)
+        tk.Label(self.frame, text='Map: ',
+                 justify=tk.LEFT).grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.mapdropdown.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
+
+        # Create canvas
+        canvas = tk.Canvas(self.frame, relief=tk.SUNKEN, width=600, height=600, scrollregion=(0,0,1000,1000))
+        canvas.configure(scrollregion=canvas.bbox('all'))
+        
+        img = tk.PhotoImage(file='map_ruatiti.gif')
+        self.frame.image = img
+        canvas.create_image(0, 0, image=img)
+
+        ysb = ttk.Scrollbar(canvas, orient=tk.VERTICAL,
+                            command=canvas.yview)
+        xsb = ttk.Scrollbar(canvas, orient=tk.HORIZONTAL,
+                            command=canvas.xview)
+        canvas['yscrollcommand'] = ysb.set
+        canvas['xscrollcommand'] = xsb.set
+
+        # Add tree and scrollbars to frame
+        ysb.grid(row=0, column=1, sticky=tk.NS)
+        xsb.grid(row=1, column=0, sticky=tk.EW)
+
+        canvas.grid(row=1, column=0, columnspan=5)
+        # Add the command buttons
+        refresh_button = tk.Button(self.frame, text="Refresh",
+                                   command=self.refresh, width=20, padx=5, pady=5)
+        refresh_button.grid(in_=self.frame, row=2, column=3, sticky=tk.E)
+        exit_button = tk.Button(self.frame, text="Close",
+                                command=self.close, width=20, padx=5, pady=5)
+        exit_button.grid(in_=self.frame, row=2, column=4, sticky=tk.E)
+
+    def refresh(self):
+        pass
+
+    def close(self):
+        """ Closes the list window. """
+        self.root.destroy()
+
+
+class AllocateWindow(object):
+    def __init__(self, parent, title):
+        # Add a variable to hold the stores
+        self.drones = parent.drones
+        self.operators = parent.operators
+
+        # Initialise the new top-level window (modal dialog)
+        self._parent = parent.root
+        self.root = tk.Toplevel(parent.root)
+        self.root.title(title)
+        self.root.transient(parent.root)
+        self.root.grab_set()
+
+        # Initialise the top level frame
+        self.frame = tk.Frame(self.root)
+        self.frame.pack(side=tk.TOP, fill=tk.BOTH,
+                        expand=tk.Y, padx=10, pady=10)
+
+    def close(self):
+        """ Closes the list window. """
+        self.root.destroy()
 
 
 if __name__ == '__main__':

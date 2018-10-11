@@ -1,7 +1,8 @@
 class Map(object):
     """ Stores details on a map. """
 
-    def __init__(self, name, filepath):
+    def __init__(self, mid, name, filepath):
+        self.mid = mid
         self.name = name
         self.filepath = filepath
 
@@ -38,6 +39,17 @@ class MapStore(object):
         """ Lists all the maps in the store. """
         for _map in self._maps:
             yield _map
+
+    def listMaps(self):
+        cursor = self._conn.cursor()
+        query = 'SELECT Mid, name, map FROM Maps'
+
+        cursor.execute(query)
+        for (Mid, name, filepath) in cursor:
+            mapObj = Map(Mid, name, filepath)
+            yield mapObj
+
+        cursor.close()
 
     def save(self):
         """ Saves the store to the database. """

@@ -25,4 +25,4 @@ CREATE table Drones (
   Foreign Key(Oid) references Operators(Oid) on delete set NULL,
   Foreign Key(Mid) references Maps(Mid) on delete set NULL
  );
- 
+ INSERT INTO Maps(Mid, name, map) VALUES (1, 'Abel Tasman', 'map_abel_tasman_3.gif'), (2, 'Ruatiti', 'map_ruatiti.gif');
