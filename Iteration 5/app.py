@@ -1,6 +1,7 @@
 import mysql.connector
 import Tkinter as tk
 import ttk
+from PIL import Image
 
 from drones import Drone, DroneStore
 from operators import Operator, OperatorStore
@@ -16,6 +17,7 @@ class Application(object):
         self.drones = DroneStore(conn)
         self.operators = OperatorStore(conn)
         self.maps = MapStore(conn)
+        self.track = TrackingSystem()
 
         # Initialise the GUI window
         self.root = tk.Tk()
@@ -75,6 +77,8 @@ class ListWindow(object):
         self.drones = parent.drones
         self.operators = parent.operators
         self.maps = parent.maps
+        self.track = parent.track
+        
 
         # Initialise the new top-level window (modal dialog)
         self._parent = parent.root
@@ -292,7 +296,9 @@ class EditorWindow(object):
 
     def __init__(self, parent, title, save_action):
         # Initialise the new top-level window (modal dialog)
+        
         self._parent = parent.root
+        self.track = parent.track
         self.root = tk.Toplevel(parent.root)
         self.root.title(title)
         self.root.transient(parent.root)
@@ -331,7 +337,7 @@ class DroneEditorWindow(EditorWindow):
     """ Editor window for drones. """
 
     def __init__(self, parent, drone, assignedMap, save_action):
-        self.track = TrackingSystem()
+        self.track = parent.track
         self._drone = drone
         self._map = assignedMap
         self._save_action = save_action
@@ -377,6 +383,7 @@ class DroneEditorWindow(EditorWindow):
                 ts = self.track.retrieve(self._map, self._drone)
                 if ts.is_valid():
                     point = ts.position()
+                    self._drone.loc = point
                     point = '(' + str(point[0]) + ', ' + str(point[1]) + ')'
                 else:
                     point = 'n/a'
@@ -610,6 +617,7 @@ class MapWindow(object):
         self.drones = parent.drones
         self.operators = parent.operators
         self.maps = parent.maps
+        self.track = parent.track
 
         # Initialise the new top-level window (modal dialog)
         self._parent = parent.root
@@ -617,56 +625,147 @@ class MapWindow(object):
         self.root.title(title)
         self.root.transient(parent.root)
         self.root.grab_set()
-
+        
         # Initialise the top level frame
         self.frame = tk.Frame(self.root)
         self.frame.pack(side=tk.TOP, fill=tk.BOTH,
                         expand=tk.Y, padx=10, pady=10)
 
         # Map dropdown
-        self.mapdropdown = ttk.Combobox(
-            self.frame)
+        self.mapdropdown = ttk.Combobox(self.frame)
+
+        # Generates map list and populates combobox
         maplist = list(self.maps.listMaps())
         values = []
         for i in range(len(maplist)):
             values.append(maplist[i].name)
         self.mapdropdown['values'] = tuple(values)
         self.mapdropdown.set(values[0])
-        self.mapdropdown.config(width=50)
+        self.currentmap = maplist[0].filepath
+        self.cmObj = maplist[0]
+        self.mapdropdown.config(width=60)
+
+        # Creates the map dropdown label and combobox
         tk.Label(self.frame, text='Map: ',
                  justify=tk.LEFT).grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
         self.mapdropdown.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
 
-        # Create canvas
-        canvas = tk.Canvas(self.frame, relief=tk.SUNKEN, width=600, height=600, scrollregion=(0,0,1000,1000))
-        canvas.configure(scrollregion=canvas.bbox('all'))
-        
-        img = tk.PhotoImage(file='map_ruatiti.gif')
-        self.frame.image = img
-        canvas.create_image(0, 0, image=img)
+        # Create frame and canvas
+        self.imgFrame = tk.Frame(
+            self.frame, width=800, height=500)
+        self.imgFrame.grid(row=1, column=0, columnspan=2)
+        self.imgFrame.rowconfigure(0, weight=1)
+        self.imgFrame.columnconfigure(0, weight=1)
 
-        ysb = ttk.Scrollbar(canvas, orient=tk.VERTICAL,
-                            command=canvas.yview)
-        xsb = ttk.Scrollbar(canvas, orient=tk.HORIZONTAL,
-                            command=canvas.xview)
-        canvas['yscrollcommand'] = ysb.set
-        canvas['xscrollcommand'] = xsb.set
+        self.canvas = tk.Canvas(self.imgFrame, width=800, height=500)
+        self.canvas.grid(row=0, column=0, sticky="nsew")
 
-        # Add tree and scrollbars to frame
-        ysb.grid(row=0, column=1, sticky=tk.NS)
-        xsb.grid(row=1, column=0, sticky=tk.EW)
+        canvasFrame = tk.Frame(self.canvas)
+        self.canvas.create_window(0, 0, window=canvasFrame, anchor='nw')
 
-        canvas.grid(row=1, column=0, columnspan=5)
+        # Assign Image here
+        self.img = tk.PhotoImage(file=self.currentmap)
+        self.frame.im2 = self.img
+        self.canvas.config(scrollregion=(0,0,self.img.width(),self.img.height()))
+        self.canvas.create_image(0,0,anchor='nw',image=self.img)
+        #####
+
+        yScroll = tk.Scrollbar(self.imgFrame, orient=tk.VERTICAL)
+        yScroll.config(command=self.canvas.yview)
+        self.canvas.config(yscrollcommand=yScroll.set)
+        yScroll.grid(row=0, column=2, sticky="ns")
+
+        xScroll = tk.Scrollbar(self.imgFrame, orient=tk.HORIZONTAL)
+        xScroll.config(command=self.canvas.xview)
+        self.canvas.config(xscrollcommand=xScroll.set)
+        xScroll.grid(row=1, column=0, columnspan=2, sticky="ew")
+
         # Add the command buttons
         refresh_button = tk.Button(self.frame, text="Refresh",
                                    command=self.refresh, width=20, padx=5, pady=5)
-        refresh_button.grid(in_=self.frame, row=2, column=3, sticky=tk.E)
+        refresh_button.grid(in_=self.frame, row=2, column=1, sticky=tk.E)
         exit_button = tk.Button(self.frame, text="Close",
                                 command=self.close, width=20, padx=5, pady=5)
-        exit_button.grid(in_=self.frame, row=2, column=4, sticky=tk.E)
+        exit_button.grid(in_=self.frame, row=3, column=1, sticky=tk.E)
 
+        # Renders mock drone locations
+
+        # First time rescue and nonrescue drone count
+        self.res = 0
+        self.nonres = 0
+
+        self.resDrones = []
+        self.nonresDrones = []
+
+        allDrones = list(self.drones.listDrones(''))
+        for i in allDrones:
+            if i.map == self.cmObj.mid:
+                if i.rescue == 1:
+                    self.res += 1
+                    self.resDrones.append(i)
+                else:
+                    self.nonres += 1
+                    self.nonresDrones.append(i)
+
+        # Update on combobox change
+        def populateImage(event):
+            self.canvas.delete(all)
+            mapname = self.mapdropdown.get()
+            for i in range(len(maplist)):
+                if mapname == maplist[i].name:
+                    self.currentmap = maplist[i].filepath
+                    self.cmObj = maplist[i]
+                    break
+            self.img = tk.PhotoImage(file=self.currentmap)
+            self.frame.im2 = self.img
+            self.canvas.config(scrollregion=(0,0,self.img.width(),self.img.height()))
+            self.canvas.create_image(0,0,anchor='nw',image=self.img)
+            
+            self.res = 0
+            self.nonres = 0
+
+            for i in allDrones:
+                if i.map == self.cmObj.mid:
+                    if i.rescue == 1:
+                        self.res += 1
+                    else:
+                        self.nonres += 1
+
+            self.refresh()
+            
+
+        # Binds populate image on new selection
+        self.mapdropdown.bind('<<ComboboxSelected>>', populateImage)
+
+        self.circles = []
+
+        for i in range(self.res):
+            loc = self.track.retrieve(self.cmObj, self.resDrones[i])
+            if loc.is_valid():
+                coords = loc.position()
+                self.circles.append(self.canvas.create_oval(self.img.width()*(coords[0]/100.0)-20, self.img.height()*(coords[1]/100.0)-20, self.img.width()*(coords[0]/100.0)+20, self.img.height()*(coords[1]/100.0)+20, fill="blue"))
+                
+        for i in range(self.nonres):
+            loc = self.track.retrieve(self.cmObj, self.nonresDrones[i])
+            if loc.is_valid():
+                coords = loc.position()
+                self.circles.append(self.canvas.create_oval(self.img.width()*(coords[0]/100.0)-20, self.img.height()*(coords[1]/100.0)-20, self.img.width()*(coords[0]/100.0)+20, self.img.height()*(coords[1]/100.0)+20, fill="red"))
+        
     def refresh(self):
-        pass
+        for i in range(len(self.circles)):
+            self.canvas.delete(self.circles[i])
+
+        for i in range(self.res):
+            loc = self.track.retrieve(self.cmObj, self.resDrones[i])
+            if loc.is_valid():
+                coords = loc.position()
+                self.circles.append(self.canvas.create_oval(self.img.width()*(coords[0]/100.0)-20, self.img.height()*(coords[1]/100.0)-20, self.img.width()*(coords[0]/100.0)+20, self.img.height()*(coords[1]/100.0)+20, fill="blue"))
+                
+        for i in range(self.nonres):
+            loc = self.track.retrieve(self.cmObj, self.nonresDrones[i])
+            if loc.is_valid():
+                coords = loc.position()
+                self.circles.append(self.canvas.create_oval(self.img.width()*(coords[0]/100.0)-20, self.img.height()*(coords[1]/100.0)-20, self.img.width()*(coords[0]/100.0)+20, self.img.height()*(coords[1]/100.0)+20, fill="red"))
 
     def close(self):
         """ Closes the list window. """
@@ -675,12 +774,12 @@ class MapWindow(object):
 
 class AllocateWindow(object):
     def __init__(self, parent, title):
-        # Add a variable to hold the stores
-        self.drones = parent.drones
-        self.operators = parent.operators
-
         # Initialise the new top-level window (modal dialog)
+        
         self._parent = parent.root
+        self.track = parent.track
+        self._drone = parent.drones
+        self._operator = parent.operators
         self.root = tk.Toplevel(parent.root)
         self.root.title(title)
         self.root.transient(parent.root)
@@ -691,8 +790,37 @@ class AllocateWindow(object):
         self.frame.pack(side=tk.TOP, fill=tk.BOTH,
                         expand=tk.Y, padx=10, pady=10)
 
+        # Add the editor widgets
+        last_row = self.add_editor_widgets()
+
+        # Add the command buttons
+        add_button = tk.Button(self.frame, text="Check",
+                               command=self.check(), width=20, padx=5, pady=5)
+        add_button.grid(in_=self.frame, row=last_row +
+                        1, column=1, sticky=tk.E)
+        add_button = tk.Button(self.frame, text="Allocate",
+                               command=self.allocate(), width=20, padx=5, pady=5)
+        add_button.grid(in_=self.frame, row=last_row +
+                        2, column=1, sticky=tk.E)
+        exit_button = tk.Button(self.frame, text="Cancel",
+                                command=self.close, width=20, padx=5, pady=5)
+        exit_button.grid(in_=self.frame, row=last_row +
+                         3, column=1, sticky=tk.E)
+
+    def add_editor_widgets(self):
+        """ Adds the editor widgets to the frame - this needs to be overriden in inherited classes. 
+        This function should return the row number of the last row added - EditorWindow uses this
+        to correctly display the buttons. """
+        return 6
+
+    def check(self):
+        pass
+
+    def allocate(self):
+        pass
+
     def close(self):
-        """ Closes the list window. """
+        """ Closes the editor window. """
         self.root.destroy()
 
 

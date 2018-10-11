@@ -8,6 +8,7 @@ class Drone(object):
         self.rescue = rescue
         self.operator = None
         self.map = None
+        self.loc = None
 
 
 class DroneAction(object):
