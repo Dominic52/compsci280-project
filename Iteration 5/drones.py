@@ -221,6 +221,35 @@ class DroneStore(object):
 
         return action
 
+    def allocateIgnoreErr(self, args):
+        cursor = self._conn.cursor()
+
+        try:
+            query = 'UPDATE Drones SET Oid = %d WHERE Did = %d' % (
+                args[0], args[1])
+
+            cursor.execute(query)
+            print(query)
+        except:
+            query = 'SELECT * FROM Drones'
+            cursor.execute(query)
+            results = cursor.fetchall()
+
+            for i in range(len(results)):
+                if results[i][1] == args[0]:
+                    idToClear = results[i][0]
+                    break
+            query = 'UPDATE Drones SET Oid = NULL WHERE Did = %d' % idToClear
+            cursor.execute(query)
+
+            query = 'UPDATE Drones SET Oid = %d WHERE Did = %d' % (
+                args[0], args[1])
+
+            cursor.execute(query)
+
+        print("Errors ignored, allocation has been executed")
+        cursor.close()
+
     def allocateDrones(self, args):
         """Allocates drone to operator and saves to database"""
         cursor = self._conn.cursor()

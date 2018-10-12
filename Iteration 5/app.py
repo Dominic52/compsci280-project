@@ -785,39 +785,117 @@ class AllocateWindow(object):
         self.root.transient(parent.root)
         self.root.grab_set()
 
+        self.allDrones = list(self._drone.listDrones(''))
+        self.allOps = list(self._operator.listOperators(''))
+
+        droneListStr = []
+        opListStr = []
+
+        for i in range(len(self.allDrones)):
+            string = str(self.allDrones[i].id) + ": " + self.allDrones[i].name
+            droneListStr.append(string)
+
+        for i in range(len(self.allOps)):
+            opListStr.append(self.allOps[i].first_name)
+
         # Initialise the top level frame
         self.frame = tk.Frame(self.root)
         self.frame.pack(side=tk.TOP, fill=tk.BOTH,
                         expand=tk.Y, padx=10, pady=10)
 
-        # Add the editor widgets
-        last_row = self.add_editor_widgets()
+        # Drone list drop down
+        self.droneListDropDown = ttk.Combobox(
+            self.frame)
+        self.droneListDropDown['values'] = droneListStr # ID: Name of all the drones
+        self.droneListDropDown.config(width=40)
+        tk.Label(self.frame, text='Drone: ',
+                 justify=tk.LEFT).grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.droneListDropDown.grid(row=0, column=1, columnspan=2, padx=5, pady=5, sticky=tk.W)
+
+        # Operator list drop down
+        self.operatorListDropDown = ttk.Combobox(
+            self.frame)
+        self.operatorListDropDown['values'] = opListStr # Name of all the operators
+        self.operatorListDropDown.config(width=40)
+        tk.Label(self.frame, text='Operator: ',
+                 justify=tk.LEFT).grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+        self.operatorListDropDown.grid(row=1, column=1, columnspan=2, padx=5, pady=5, sticky=tk.W)
+
+        # Entry box displaying error messages
+        self.errorDisplay = tk.Text(self.frame, width=30, height=8, wrap=tk.WORD)
+        self.errorDisplay.insert(tk.INSERT, "Error Messages")
+
+        self.errorDisplay.grid(row=2, column=0, rowspan=3, columnspan=2, padx=5, pady=5, sticky=tk.W)
 
         # Add the command buttons
         add_button = tk.Button(self.frame, text="Check",
-                               command=self.check(), width=20, padx=5, pady=5)
-        add_button.grid(in_=self.frame, row=last_row +
-                        1, column=1, sticky=tk.E)
+                               command=self.check, width=20, padx=5, pady=5)
+        add_button.grid(in_=self.frame, row=2, column=2, sticky=tk.E)
         add_button = tk.Button(self.frame, text="Allocate",
-                               command=self.allocate(), width=20, padx=5, pady=5)
-        add_button.grid(in_=self.frame, row=last_row +
-                        2, column=1, sticky=tk.E)
+                               command=self.allocate, width=20, padx=5, pady=5)
+        add_button.grid(in_=self.frame, row=3, column=2, sticky=tk.E)
         exit_button = tk.Button(self.frame, text="Cancel",
                                 command=self.close, width=20, padx=5, pady=5)
-        exit_button.grid(in_=self.frame, row=last_row +
-                         3, column=1, sticky=tk.E)
-
-    def add_editor_widgets(self):
-        """ Adds the editor widgets to the frame - this needs to be overriden in inherited classes. 
-        This function should return the row number of the last row added - EditorWindow uses this
-        to correctly display the buttons. """
-        return 6
+        exit_button.grid(in_=self.frame, row=4, column=2, sticky=tk.E)
 
     def check(self):
-        pass
+        # Empty error string
+        
+        errString = ""
+
+        # Get currently selected operator and drone
+        currentOp = self.operatorListDropDown.get()
+        currentDrone = self.droneListDropDown.get()
+
+        # If operator or drone is not selected, do nothing
+        if currentOp == "" or currentDrone == "":
+            return
+
+        # Else empty display and begin checking errors
+        self.errorDisplay.delete(1.0, tk.END)
+
+        for i in range(len(self.allDrones)):
+            if str(self.allDrones[i].id) == currentDrone.split(' ')[0][:-1]:
+                self.cdObj = self.allDrones[i]
+                break
+        for i in range(len(self.allOps)):
+            if self.allOps[i].first_name == currentOp:
+                self.coObj = self.allOps[i]
+                break
+        
+        # Check if drone is already allocated
+        if self.cdObj.operator != None:
+            errString += "Drone is already allocated\n"
+
+        # Check if operator already has a drone
+        for i in range(len(self.allDrones)):
+            if self.allDrones[i].operator == self.coObj.first_name:
+                if self.allDrones[i].id != self.cdObj.id:
+                    errString += "Operator already assigned to a different drone\n"
+                    break
+        
+        # Check if operator drone license is sufficient to operator drone
+        if self.cdObj.class_type == 2:
+            if self.coObj.drone_license != 2:
+                errString += "Operator does not have drone license to operate class 2 drone\n"
+
+        # Check if operator has rescue endorsement for rescue drone
+        if self.cdObj.rescue == 1:
+            if self.coObj.rescue_endorsement != 1:
+                errString += "Operator does not have rescue endorsement to operate rescue drone\n"
+
+        self.errorDisplay.insert(tk.INSERT, errString)
+        
 
     def allocate(self):
-        pass
+        #allocate Oid to specified Did
+        args = [None, None]
+        args[0] = self.coObj.Oid
+        args[1] = self.cdObj.id
+        self._drone.allocateIgnoreErr(args)
+
+        self.errorDisplay.delete(1.0, tk.END)
+        self.errorDisplay.insert(tk.INSERT, "Drone - Operator pair has been allocated")
 
     def close(self):
         """ Closes the editor window. """
